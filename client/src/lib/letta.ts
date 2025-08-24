@@ -75,12 +75,29 @@ export class LettaService {
     }
 
     const data = await res.json();
+    console.log('Letta API Response:', JSON.stringify(data, null, 2));
 
     // Robust parsing for different possible shapes
     const convoId = data.conversation_id || data.conversationId || data.conversation?.id;
 
-    // Assistant text: prefer explicit field, else parse content array
-    let assistantText: string | undefined = data.assistant_message;
+    // Assistant text: try different possible response formats
+    let assistantText: string | undefined = 
+      data.assistant_message || 
+      data.response || 
+      data.content ||
+      data.text;
+
+    // If still no text, try parsing from messages array
+    if (!assistantText && Array.isArray(data.messages)) {
+      for (const msg of data.messages) {
+        if (msg.role === 'assistant' || msg.messageType === 'assistant_message') {
+          assistantText = msg.content || msg.text;
+          if (assistantText) break;
+        }
+      }
+    }
+
+    // Try parsing from message.content array
     if (!assistantText) {
       const contentArr = data.message?.content || data.assistant_message_parts || [];
       if (Array.isArray(contentArr)) {
@@ -89,6 +106,31 @@ export class LettaService {
           .map((p: any) => p.text)
           .join('\n') || undefined;
       }
+    }
+
+    // If we still don't have text, try to extract from any nested structure
+    if (!assistantText && typeof data === 'object') {
+      // Try to find any text content in the response
+      const findText = (obj: any): string | undefined => {
+        if (typeof obj === 'string' && obj.trim().length > 0) return obj;
+        if (Array.isArray(obj)) {
+          for (const item of obj) {
+            const found = findText(item);
+            if (found) return found;
+          }
+        }
+        if (obj && typeof obj === 'object') {
+          for (const [key, value] of Object.entries(obj)) {
+            if ((key.includes('text') || key.includes('content') || key.includes('message')) && typeof value === 'string' && value.trim().length > 0) {
+              return value;
+            }
+            const found = findText(value);
+            if (found) return found;
+          }
+        }
+        return undefined;
+      };
+      assistantText = findText(data);
     }
 
     const parts: any[] = [];
@@ -109,16 +151,20 @@ export class LettaService {
     }
 
     const messages = [] as any[];
-    if (assistantText) {
-      messages.push({
-        id: `msg_${Date.now()}`,
-        text: assistantText,
-        content: assistantText,
-        role: 'assistant',
-        created_at: new Date().toISOString(),
-        parts,
-      });
-    }
+    
+    // Always create a response message, even if we couldn't parse the text
+    const finalText = assistantText || 'I received your message but had trouble parsing the response. Please try again.';
+    
+    console.log('Parsed assistant text:', finalText);
+    
+    messages.push({
+      id: `msg_${Date.now()}`,
+      text: finalText,
+      content: finalText,
+      role: 'assistant',
+      created_at: new Date().toISOString(),
+      parts,
+    });
 
     return { messages, conversationId: convoId };
   }
