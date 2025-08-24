@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useChat } from '@ai-sdk/react';
 import { Sidebar } from './Sidebar';
 import { Messages } from '../message-area/Messages';
 import { MessageComposer } from '../message-area/MessageComposer';
 import { AgentDetailDisplay } from '../agent-details/AgentDetailsDisplay';
-import { useChat } from '@/hooks/useChat';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Bot } from 'lucide-react';
@@ -14,16 +14,12 @@ import { useIsMobile } from '@/hooks/useMobile';
 import { useAgents } from '@/hooks/useAgents';
 export function EnhancedChatInterface() {
   const [selectedAgent, setSelectedAgent] = useState<LettaAgent | null>(null);
-  const { messages, isLoading, sendMessage, loadMessages } = useChat(selectedAgent?.id || null);
-  const [input, setInput] = useState('');
   const isMobile = useIsMobile();
   const { agents } = useAgents();
   
-  useEffect(() => {
-    if (selectedAgent) {
-      loadMessages();
-    }
-  }, [selectedAgent, loadMessages]);
+  const { messages = [], input = '', handleInputChange, handleSubmit, isLoading } = useChat({
+    api: selectedAgent ? `/api/agents/${selectedAgent.id}/messages` : undefined,
+  }) || {};
   
   useEffect(() => {
     if (!selectedAgent && agents.length > 0) {
@@ -31,21 +27,13 @@ export function EnhancedChatInterface() {
     }
   }, [agents, selectedAgent]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (input.trim() && selectedAgent && !isLoading) {
-      await sendMessage(input.trim());
-      setInput('');
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-  };
-
   const handleActionClick = async (action: string) => {
     if (selectedAgent && !isLoading) {
-      await sendMessage(action);
+      // For action clicks, we simulate a form event
+      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+      const fakeInputEvent = { target: { value: action } } as React.ChangeEvent<HTMLTextAreaElement>;
+      handleInputChange(fakeInputEvent);
+      setTimeout(() => handleSubmit(fakeEvent), 0);
     }
   };
 
@@ -95,7 +83,7 @@ export function EnhancedChatInterface() {
                       handleSubmit={handleSubmit}
                       handleInputChange={handleInputChange}
                       input={input}
-                      isLoading={isLoading}
+                      status={isLoading ? 'pending' : 'idle'}
                     />
                   </div>
 

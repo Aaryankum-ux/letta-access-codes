@@ -1,37 +1,6 @@
-import { convertToAiSdkMessage, createLetta } from '@letta-ai/vercel-ai-sdk-provider';
+import { createLetta } from '@letta-ai/vercel-ai-sdk-provider';
 import { streamText } from 'ai';
 import type { Request, Response } from 'express';
-
-// Helper function to filter messages
-function filterMessages(messages: any[]) {
-  const MESSAGE_TYPES_TO_HIDE = ['system_message'];
-  
-  return messages
-    .filter((message) => {
-      try {
-        // Parse and filter out heartbeat messages
-        if (message.messageType === 'user_message' && typeof message.content === 'string') {
-          const parsed = JSON.parse(message.content);
-          if (parsed?.type === 'heartbeat') { 
-            return false; // Hide heartbeat messages
-          }
-        }
-      } catch {
-        // If JSON parsing fails, check if it's a system message
-        if (MESSAGE_TYPES_TO_HIDE.includes(message.messageType)) {
-          return false;
-        }
-        return true;
-      }
-      
-      // Hide system messages
-      if (MESSAGE_TYPES_TO_HIDE.includes(message.messageType)) {
-        return false;
-      }
-      return true;
-    })
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()); // Sort chronologically
-}
 
 export async function handleMessages(req: Request, res: Response) {
   const { agentId } = req.params;
@@ -44,8 +13,7 @@ export async function handleMessages(req: Request, res: Response) {
 
   if (req.method === 'GET') {
     try {
-      // For now, return empty array since we build timeline client-side
-      // In a full implementation, you would fetch from Letta API here
+      // Return empty array since we build timeline client-side with Letta Cloud
       return res.json([]);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -67,26 +35,31 @@ export async function handleMessages(req: Request, res: Response) {
         messages
       });
 
-      // Convert to data stream response with reasoning
-      const response = result.toDataStreamResponse({ sendReasoning: true });
+      // Get the stream response and pipe it to Express response
+      const streamResponse = result.toDataStreamResponse();
       
-      // Set appropriate headers for streaming
+      // Set headers for streaming
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       
-      // Pipe the stream to the response
-      const reader = response.body?.getReader();
-      if (reader) {
+      // Get the readable stream and pipe to response
+      if (streamResponse.body) {
+        const reader = streamResponse.body.getReader();
         const pump = async () => {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            res.write(value);
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              res.write(value);
+            }
+            res.end();
+          } catch (error) {
+            console.error('Streaming error:', error);
+            res.end();
           }
-          res.end();
         };
-        pump().catch(console.error);
+        await pump();
       } else {
         res.end();
       }
