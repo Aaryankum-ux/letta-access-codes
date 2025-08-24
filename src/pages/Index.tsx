@@ -1,9 +1,7 @@
-// Update this page (the content is just a fallback if you fail to update the page)
-
-import { ChatInterface } from "@/components/chat/ChatInterface";
+import { EnhancedChatInterface } from "@/components/chat/EnhancedChatInterface";
 
 const Index = () => {
-  return <ChatInterface />;
+  return <EnhancedChatInterface />;
 };
 
 export default Index;

@@ -4,6 +4,14 @@ export interface LettaMessage {
   content: string;
   createdAt?: Date;
   agentId?: string;
+  parts?: MessagePart[];
+}
+
+export interface MessagePart {
+  type: 'text' | 'reasoning' | 'tool-call';
+  text?: string;
+  reasoning?: string;
+  toolCall?: string;
 }
 
 export interface LettaAgent {
@@ -30,4 +38,10 @@ export interface ChatState {
   messages: LettaMessage[];
   isLoading: boolean;
   error?: string;
+}
+
+export const ROLE_TYPE = {
+  USER: 'user' as const,
+  ASSISTANT: 'assistant' as const,
+  SYSTEM: 'system' as const
 }
