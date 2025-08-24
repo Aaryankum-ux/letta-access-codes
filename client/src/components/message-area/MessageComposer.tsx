@@ -3,14 +3,14 @@
 import { Button } from '@/components/ui/button'
 import { useEffect, useRef } from 'react'
 import { ArrowUpIcon } from 'lucide-react'
-import type { UseChatHelpers } from '@ai-sdk/react'
+// import type { UseChatHelpers } from '@ai-sdk/react'
 import { TEXTBOX_PLACEHOLDER } from '@/lib/labels'
 
 interface MessageComposerProps {
-  handleSubmit: UseChatHelpers['handleSubmit']
-  handleInputChange: UseChatHelpers['handleInputChange']
-  input: UseChatHelpers['input']
-  status: UseChatHelpers['status']
+  handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void
+  handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+  input: string
+  status: 'idle' | 'pending' | 'error'
 }
 
 export function MessageComposer(props: MessageComposerProps) {

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useChat } from '@ai-sdk/react';
 import { Sidebar } from './Sidebar';
 import { Messages } from '../message-area/Messages';
 import { MessageComposer } from '../message-area/MessageComposer';
@@ -17,8 +16,57 @@ export function EnhancedChatInterface() {
   const isMobile = useIsMobile();
   const { agents } = useAgents();
   
-  const chatConfig = selectedAgent ? { api: `/api/agents/${selectedAgent.id}/messages` } : { api: '/api/chat/fallback' };
-  const { messages = [], input = '', handleInputChange, handleSubmit, isLoading } = useChat(chatConfig);
+  // Simple state-based chat implementation
+  const [messages, setMessages] = useState<any[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+  };
+  
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!input.trim() || !selectedAgent || isLoading) return;
+    
+    const userMessage = { role: 'user', content: input.trim() };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch(`/api/agents/${selectedAgent.id}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [...messages, userMessage] })
+      });
+      
+      if (response.ok) {
+        const reader = response.body?.getReader();
+        let assistantMessage = { role: 'assistant', content: '' };
+        setMessages(prev => [...prev, assistantMessage]);
+        
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = new TextDecoder().decode(value);
+            assistantMessage.content += chunk;
+            setMessages(prev => {
+              const newMessages = [...prev];
+              newMessages[newMessages.length - 1] = { ...assistantMessage };
+              return newMessages;
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   useEffect(() => {
     if (!selectedAgent && agents.length > 0) {
@@ -27,12 +75,11 @@ export function EnhancedChatInterface() {
   }, [agents, selectedAgent]);
 
   const handleActionClick = async (action: string) => {
-    if (selectedAgent && !isLoading && handleInputChange && handleSubmit) {
-      // For action clicks, we simulate a form event
-      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-      const fakeInputEvent = { target: { value: action } } as React.ChangeEvent<HTMLTextAreaElement>;
-      handleInputChange(fakeInputEvent);
-      setTimeout(() => handleSubmit(fakeEvent), 0);
+    if (selectedAgent && !isLoading) {
+      setInput(action);
+      // Auto-submit the action
+      const fakeEvent = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>;
+      setTimeout(() => handleSubmit(fakeEvent), 100);
     }
   };
 
@@ -79,9 +126,9 @@ export function EnhancedChatInterface() {
                     />
                     
                     <MessageComposer
-                      handleSubmit={handleSubmit || (() => {})}
-                      handleInputChange={handleInputChange || (() => {})}
-                      input={input || ''}
+                      handleSubmit={handleSubmit}
+                      handleInputChange={handleInputChange}
+                      input={input}
                       status={isLoading ? 'pending' : 'idle'}
                     />
                   </div>
