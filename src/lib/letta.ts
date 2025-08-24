@@ -50,8 +50,18 @@ export class LettaService {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        conversation_id: conversationId,
-        content: [{ type: 'text', text: message }],
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: message
+              }
+            ]
+          }
+        ],
+        conversation: conversationId
       }),
     });
 
