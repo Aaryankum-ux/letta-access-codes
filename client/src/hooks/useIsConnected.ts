@@ -4,22 +4,18 @@ export function useIsConnected() {
   const [isConnected, setIsConnected] = useState(true)
 
   useEffect(() => {
-    // Mock connection check - replace with actual Letta server ping
-    const checkConnection = async () => {
-      try {
-        const baseUrl = import.meta.env.VITE_LETTA_BASE_URL || 'https://api.letta.com'
-        const apiBase = `${baseUrl.replace(/\/$/, '')}/v1`
-        const apiKey = import.meta.env.VITE_LETTA_API_KEY
-        const response = await fetch(`${apiBase}/health`, { method: 'GET', headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined })
-        setIsConnected(response.ok)
-      } catch (error) {
-        console.warn('Connection check failed:', error)
-        setIsConnected(false)
-      }
+    // Simple credential check - if we have the required env vars, assume connected
+    const checkConnection = () => {
+      const apiKey = import.meta.env.VITE_LETTA_API_KEY
+      const agentId = import.meta.env.VITE_LETTA_AGENT_ID
+      
+      // If we have both credentials, assume connected
+      setIsConnected(!!apiKey && !!agentId)
     }
 
     checkConnection()
-    const interval = setInterval(checkConnection, 30000) // Check every 30 seconds
+    // Check every 30 seconds in case env vars change
+    const interval = setInterval(checkConnection, 30000)
 
     return () => clearInterval(interval)
   }, [])
