@@ -17,12 +17,14 @@ export function EnhancedChatInterface() {
   const { messages, isLoading, sendMessage, loadMessages } = useChat(selectedAgent?.id || null);
   const [input, setInput] = useState('');
   const isMobile = useIsMobile();
-const { agents } = useAgents();
+  const { agents } = useAgents();
+  
   useEffect(() => {
     if (selectedAgent) {
       loadMessages();
     }
   }, [selectedAgent, loadMessages]);
+  
   useEffect(() => {
     if (!selectedAgent && agents.length > 0) {
       setSelectedAgent(agents[0]);

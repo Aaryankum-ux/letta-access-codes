@@ -75,7 +75,6 @@ export class LettaService {
     }
 
     const data = await res.json();
-    console.log('Letta API Response:', JSON.stringify(data, null, 2));
 
     // Robust parsing for different possible shapes
     const convoId = data.conversation_id || data.conversationId || data.conversation?.id;
@@ -155,7 +154,6 @@ export class LettaService {
     // Always create a response message, even if we couldn't parse the text
     const finalText = assistantText || 'I received your message but had trouble parsing the response. Please try again.';
     
-    console.log('Parsed assistant text:', finalText);
     
     messages.push({
       id: `msg_${Date.now()}`,

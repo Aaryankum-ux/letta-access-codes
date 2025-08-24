@@ -9,6 +9,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // use storage to perform CRUD operations on the storage interface
   // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
 
+  // Import the messages handler
+  const { handleMessages } = await import('./api/agents/[agentId]/messages.js');
+  
+  // Register the API route for agent messages
+  app.all('/api/agents/:agentId/messages', handleMessages);
+
   const httpServer = createServer(app);
 
   return httpServer;
