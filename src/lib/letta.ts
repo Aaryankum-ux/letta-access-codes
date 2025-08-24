@@ -1,55 +1,45 @@
-import type { LettaAgent, DefaultAgentConfig } from '@/types/letta';
-import defaultAgentConfig from '../../default-agent.json';
+import type { LettaAgent, LettaMessage } from '@/types/letta';
 
-const config = defaultAgentConfig as DefaultAgentConfig;
-
-// Mock implementation for development - update with actual Letta client when API is confirmed
 export class LettaService {
   private baseUrl: string;
-  private apiKey?: string;
+  private apiKey: string;
+  private agentId: string;
   
   constructor() {
-    this.baseUrl = import.meta.env.VITE_LETTA_BASE_URL || 'http://localhost:8283';
-    this.apiKey = import.meta.env.VITE_LETTA_API_KEY;
-  }
-
-  async createAgent(name: string): Promise<LettaAgent> {
-    try {
-      // Mock implementation - replace with actual API call
-      const mockAgent: LettaAgent = {
-        id: `agent_${Date.now()}`,
-        name,
-        persona: config.DEFAULT_MEMORY_BLOCKS.find(b => b.label === 'persona')?.value,
-        human: config.DEFAULT_MEMORY_BLOCKS.find(b => b.label === 'human')?.value,
-        created_at: new Date().toISOString(),
-        last_updated_at: new Date().toISOString()
-      };
-      
-      // Store in localStorage for demo
-      const agents = this.getStoredAgents();
-      agents.push(mockAgent);
-      localStorage.setItem('letta_agents', JSON.stringify(agents));
-      
-      return mockAgent;
-    } catch (error) {
-      console.error('Failed to create agent:', error);
-      throw new Error('Failed to create agent. Please check your Letta server connection.');
+    this.baseUrl = import.meta.env.VITE_LETTA_BASE_URL || 'https://api.letta.com';
+    this.apiKey = import.meta.env.VITE_LETTA_API_KEY || '';
+    this.agentId = import.meta.env.VITE_LETTA_AGENT_ID || '';
+    
+    if (!this.apiKey) {
+      throw new Error('VITE_LETTA_API_KEY is required');
+    }
+    if (!this.agentId) {
+      throw new Error('VITE_LETTA_AGENT_ID is required');
     }
   }
 
   async getAgents(): Promise<LettaAgent[]> {
     try {
-      // Mock implementation - replace with actual API call
-      return this.getStoredAgents();
+      // Return the single configured agent
+      const agent: LettaAgent = {
+        id: this.agentId,
+        name: 'Letta Cloud Agent',
+        persona: 'Connected to Letta Cloud',
+        human: 'Chat user',
+        created_at: new Date().toISOString(),
+        last_updated_at: new Date().toISOString()
+      };
+      
+      return [agent];
     } catch (error) {
       console.error('Failed to get agents:', error);
-      throw new Error('Failed to fetch agents. Please check your Letta server connection.');
+      throw new Error('Failed to fetch agents from Letta Cloud.');
     }
   }
 
   async getAgent(agentId: string): Promise<LettaAgent> {
     try {
-      const agents = this.getStoredAgents();
+      const agents = await this.getAgents();
       const agent = agents.find(a => a.id === agentId);
       if (!agent) {
         throw new Error('Agent not found');
@@ -57,56 +47,84 @@ export class LettaService {
       return agent;
     } catch (error) {
       console.error('Failed to get agent:', error);
-      throw new Error('Failed to fetch agent. Please check your Letta server connection.');
+      throw new Error('Failed to fetch agent from Letta Cloud.');
     }
   }
 
-  async sendMessage(agentId: string, message: string) {
+  async sendMessage(agentId: string, message: string, conversationId?: string) {
     try {
-      // Mock implementation - replace with actual API call
-      const messages = this.getStoredMessages(agentId);
-      const mockResponse = {
-        id: `msg_${Date.now()}`,
-        text: `This is a mock response to: "${message}". Configure your Letta server to see real AI responses.`,
-        role: 'assistant',
-        created_at: new Date().toISOString()
-      };
-      
-      messages.push({
-        id: `msg_${Date.now()}_user`,
-        text: message,
-        role: 'user',
-        created_at: new Date().toISOString()
+      const response = await fetch(`${this.baseUrl}/agents/${this.agentId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          content: [{ type: 'text', text: message }]
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
       
-      messages.push(mockResponse);
-      localStorage.setItem(`letta_messages_${agentId}`, JSON.stringify(messages));
+      // Parse the response to extract messages
+      const messages = [];
       
-      return [mockResponse];
+      if (data.assistant_message) {
+        messages.push({
+          id: `msg_${Date.now()}`,
+          text: data.assistant_message,
+          content: data.assistant_message,
+          role: 'assistant',
+          created_at: new Date().toISOString(),
+          parts: []
+        });
+      }
+      
+      // Add reasoning message if present
+      if (data.reasoning_message) {
+        messages[0].parts.push({
+          type: 'reasoning',
+          reasoning: data.reasoning_message
+        });
+      }
+      
+      // Add tool calls if present
+      if (data.tool_calls && data.tool_calls.length > 0) {
+        data.tool_calls.forEach((toolCall: any) => {
+          messages[0].parts.push({
+            type: 'tool-call',
+            toolCall: toolCall
+          });
+        });
+      }
+      
+      return {
+        messages,
+        conversationId: data.conversation_id || conversationId
+      };
     } catch (error) {
       console.error('Failed to send message:', error);
-      throw new Error('Failed to send message. Please check your Letta server connection.');
+      throw new Error('Failed to send message to Letta Cloud.');
     }
   }
 
   async getMessages(agentId: string) {
     try {
-      return this.getStoredMessages(agentId);
+      // For now, return empty array as we'll build conversation through sendMessage
+      // In a real implementation, you might want to fetch conversation history
+      return [];
     } catch (error) {
       console.error('Failed to get messages:', error);
-      throw new Error('Failed to fetch messages. Please check your Letta server connection.');
+      throw new Error('Failed to fetch messages from Letta Cloud.');
     }
   }
 
-  private getStoredAgents(): LettaAgent[] {
-    const stored = localStorage.getItem('letta_agents');
-    return stored ? JSON.parse(stored) : [];
-  }
-
-  private getStoredMessages(agentId: string): any[] {
-    const stored = localStorage.getItem(`letta_messages_${agentId}`);
-    return stored ? JSON.parse(stored) : [];
-  }
+  // Remove createAgent method since we're using a fixed agent
 }
 
 export const lettaService = new LettaService();

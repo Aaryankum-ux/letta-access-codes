@@ -23,18 +23,7 @@ export function useAgents() {
     }
   };
 
-  const createAgent = async (name: string) => {
-    try {
-      const newAgent = await lettaService.createAgent(name);
-      setAgents(prev => [...prev, newAgent]);
-      toast.success(`Agent "${name}" created successfully`);
-      return newAgent;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create agent';
-      toast.error(message);
-      throw err;
-    }
-  };
+  // Remove createAgent - using fixed Letta Cloud agent
 
   useEffect(() => {
     loadAgents();
@@ -44,7 +33,6 @@ export function useAgents() {
     agents,
     isLoading,
     error,
-    createAgent,
     refetch: loadAgents
   };
 }

@@ -1,10 +1,6 @@
-import { useState } from 'react';
 import { useAgents } from '@/hooks/useAgents';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, MessageCircle, Bot } from 'lucide-react';
+import { MessageCircle, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LettaAgent } from '@/types/letta';
 
@@ -15,28 +11,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ selectedAgent, onSelectAgent, className }: SidebarProps) {
-  const { agents, isLoading, createAgent } = useAgents();
-  const [newAgentName, setNewAgentName] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const { agents, isLoading } = useAgents();
 
-  const handleCreateAgent = async () => {
-    if (!newAgentName.trim()) return;
-    
-    setIsCreating(true);
-    try {
-      const agent = await createAgent(newAgentName.trim());
-      onSelectAgent(agent);
-      setNewAgentName('');
-      setShowCreateDialog(false);
-    } catch (error) {
-      // Error is handled by the hook
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const canCreateAgents = import.meta.env.VITE_CREATE_AGENTS_FROM_UI !== 'false';
+  const canCreateAgents = false; // Disabled for Letta Cloud
 
   return (
     <div className={cn("w-80 bg-sidebar border-r border-sidebar-border", className)}>
@@ -45,50 +22,15 @@ export function Sidebar({ selectedAgent, onSelectAgent, className }: SidebarProp
           <Bot className="h-6 w-6 text-sidebar-primary" />
           <h1 className="text-xl font-bold text-sidebar-foreground">Letta Agents</h1>
         </div>
+        
+        {/* Letta Cloud Status Indicator */}
+        <div className="mb-4 px-3 py-2 bg-green-50 border border-green-200 rounded-md">
+          <div className="flex items-center gap-2 text-sm text-green-700">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            Connected to Letta Cloud ✅
+          </div>
+        </div>
 
-        {canCreateAgents && (
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button className="w-full mb-4" variant="default">
-                <Plus className="h-4 w-4 mr-2" />
-                New Agent
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Agent</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <Input
-                  placeholder="Agent name"
-                  value={newAgentName}
-                  onChange={(e) => setNewAgentName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleCreateAgent();
-                    }
-                  }}
-                />
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={handleCreateAgent} 
-                    disabled={!newAgentName.trim() || isCreating}
-                    className="flex-1"
-                  >
-                    {isCreating ? 'Creating...' : 'Create'}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowCreateDialog(false)}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
 
         <div className="space-y-2">
           {isLoading ? (

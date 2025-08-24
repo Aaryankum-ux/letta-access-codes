@@ -8,6 +8,7 @@ export function useChat(agentId: string | null) {
   const [messages, setMessages] = useState<LettaMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | undefined>(undefined);
 
   const loadMessages = useCallback(async () => {
     if (!agentId) return;
@@ -51,20 +52,22 @@ export function useChat(agentId: string | null) {
     setIsLoading(true);
 
     try {
-      const response = await lettaService.sendMessage(agentId, content.trim());
+      const response = await lettaService.sendMessage(agentId, content.trim(), conversationId);
       
-      // Handle the response - it might be an array or single message
-      const responseMessages = Array.isArray(response) ? response : [response];
+      // Update conversation ID for context
+      if (response.conversationId) {
+        setConversationId(response.conversationId);
+      }
       
-      const assistantMessages: LettaMessage[] = responseMessages
-        .filter((msg: any) => msg.text || msg.content)
-        .map((msg: any) => ({
-          id: msg.id || uuidv4(),
-          role: 'assistant' as const,
-          content: msg.text || msg.content || '',
-          createdAt: new Date(),
-          agentId
-        }));
+      // Handle the response messages
+      const assistantMessages: LettaMessage[] = response.messages.map((msg: any) => ({
+        id: msg.id || uuidv4(),
+        role: 'assistant' as const,
+        content: msg.text || msg.content || '',
+        createdAt: new Date(),
+        agentId,
+        parts: msg.parts || []
+      }));
 
       setMessages(prev => [...prev, ...assistantMessages]);
     } catch (err) {
@@ -84,6 +87,7 @@ export function useChat(agentId: string | null) {
     isLoading,
     error,
     sendMessage,
-    loadMessages
+    loadMessages,
+    conversationId
   };
 }
