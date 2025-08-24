@@ -17,9 +17,8 @@ export function EnhancedChatInterface() {
   const isMobile = useIsMobile();
   const { agents } = useAgents();
   
-  const { messages = [], input = '', handleInputChange, handleSubmit, isLoading } = useChat({
-    api: selectedAgent ? `/api/agents/${selectedAgent.id}/messages` : undefined,
-  }) || {};
+  const chatConfig = selectedAgent ? { api: `/api/agents/${selectedAgent.id}/messages` } : { api: '/api/chat/fallback' };
+  const { messages = [], input = '', handleInputChange, handleSubmit, isLoading } = useChat(chatConfig);
   
   useEffect(() => {
     if (!selectedAgent && agents.length > 0) {
@@ -28,7 +27,7 @@ export function EnhancedChatInterface() {
   }, [agents, selectedAgent]);
 
   const handleActionClick = async (action: string) => {
-    if (selectedAgent && !isLoading) {
+    if (selectedAgent && !isLoading && handleInputChange && handleSubmit) {
       // For action clicks, we simulate a form event
       const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
       const fakeInputEvent = { target: { value: action } } as React.ChangeEvent<HTMLTextAreaElement>;
@@ -80,9 +79,9 @@ export function EnhancedChatInterface() {
                     />
                     
                     <MessageComposer
-                      handleSubmit={handleSubmit}
-                      handleInputChange={handleInputChange}
-                      input={input}
+                      handleSubmit={handleSubmit || (() => {})}
+                      handleInputChange={handleInputChange || (() => {})}
+                      input={input || ''}
                       status={isLoading ? 'pending' : 'idle'}
                     />
                   </div>

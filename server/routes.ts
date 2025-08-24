@@ -11,9 +11,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Import the messages handler
   const { handleMessages } = await import('./api/agents/[agentId]/messages.js');
+  const { handleFallback } = await import('./api/chat/fallback.js');
   
   // Register the API route for agent messages
   app.all('/api/agents/:agentId/messages', handleMessages);
+  app.all('/api/chat/fallback', handleFallback);
 
   const httpServer = createServer(app);
 
