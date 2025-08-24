@@ -7,8 +7,10 @@ export function useIsConnected() {
     // Mock connection check - replace with actual Letta server ping
     const checkConnection = async () => {
       try {
-        const baseUrl = import.meta.env.VITE_LETTA_BASE_URL || 'http://localhost:8283'
-        const response = await fetch(`${baseUrl}/health`, { method: 'GET' })
+        const baseUrl = import.meta.env.VITE_LETTA_BASE_URL || 'https://api.letta.com'
+        const apiBase = `${baseUrl.replace(/\/$/, '')}/v1`
+        const apiKey = import.meta.env.VITE_LETTA_API_KEY
+        const response = await fetch(`${apiBase}/health`, { method: 'GET', headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined })
         setIsConnected(response.ok)
       } catch (error) {
         console.warn('Connection check failed:', error)

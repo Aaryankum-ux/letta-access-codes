@@ -5,23 +5,29 @@ import { MessageComposer } from '../message-area/MessageComposer';
 import { AgentDetailDisplay } from '../agent-details/AgentDetailsDisplay';
 import { useChat } from '@/hooks/useChat';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Bot } from 'lucide-react';
-import type { LettaMessage, LettaAgent } from '@/types/letta';
+import type { LettaAgent } from '@/types/letta';
 import { AgentDetailsProvider, AgentDetailsTrigger } from '../providers/AgentDetailsProvider';
 import { ReasoningMessageProvider, ReasoningMessageSwitch } from '../providers/ReasoningMessageProvider';
 import { useIsMobile } from '@/hooks/useMobile';
-
+import { useAgents } from '@/hooks/useAgents';
 export function EnhancedChatInterface() {
   const [selectedAgent, setSelectedAgent] = useState<LettaAgent | null>(null);
   const { messages, isLoading, sendMessage, loadMessages } = useChat(selectedAgent?.id || null);
   const [input, setInput] = useState('');
   const isMobile = useIsMobile();
-
+const { agents } = useAgents();
   useEffect(() => {
     if (selectedAgent) {
       loadMessages();
     }
   }, [selectedAgent, loadMessages]);
+  useEffect(() => {
+    if (!selectedAgent && agents.length > 0) {
+      setSelectedAgent(agents[0]);
+    }
+  }, [agents, selectedAgent]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,10 +72,11 @@ export function EnhancedChatInterface() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <ReasoningMessageSwitch />
-                      <AgentDetailsTrigger isLoading={isLoading} />
-                    </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="hidden md:inline-flex">Connected to Letta Cloud ✅</Badge>
+                        <ReasoningMessageSwitch />
+                        <AgentDetailsTrigger isLoading={isLoading} />
+                      </div>
                   </div>
                 </div>
 
